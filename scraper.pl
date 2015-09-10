@@ -70,7 +70,12 @@ foreach my $chamber (keys %$chamber_data) {
 				$data->{area} =~ s|\s+$||;
 				$data->{name} =~ s|\r\n$||;
 				print $datafh "$data->{id}\t$data->{name}\t$data->{gender}\t$data->{image}\t$data->{birth_date}\t$data->{birth_place}\t";
-				print $datafh "$data->{death_date}\t$data->{death_place}\t" if defined $data->{death_date};
+				if (defined $data->{death_date}) {
+					print $datafh "$data->{death_date}\t$data->{death_place}\t";
+				}
+				else {
+					print $datafh "\t\t";
+				}
 				print $datafh "$data->{group}\t$data->{house}\t$data->{term}\t$data->{area}\t$data->{external_links}\n";
 				$dt->insert($data);
 			}
