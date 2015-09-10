@@ -10,6 +10,7 @@ use scraper;
 # W - Female, if set to W
 
 my $use_cache = 0;
+my $debug = 0;
 my @sessions = qw/ I II III IV V VI VII VIII IX X XI XII XIII XIV XV XVI XVII XVIII XIX XX XXI XXII XXIII XXIV XXV /;
 my %params_for_gender = (
 	'male'		=> 'M=M&W=',
@@ -20,14 +21,14 @@ my $chamber_data = {
 		'code'				=> 'NationalCouncil',
 		'base_url'			=> 'http://www.parlament.gv.at/WWER/NR/ABG/index.shtml?xdocumentUri=%2FWWER%2FNR%2FABG%2Findex.shtml&R_BW=BL&STEP=&BL=ALLE&FR=ALLE&NRBR=NR&FBEZ=FW_004&WK=ALLE&LISTE=&requestId=4642460FE1&jsMode=&letter=&WP=ALLE&listeId=4&R_WF=FR',
 		'list_regex'		=> '<table class="tabelle filterLetters[^>]+>(.*)</table>',
-		'person_regex'		=> '<tr [^>]+>(.*?)</tr>',
+		'person_regex'		=> '<tr [^>]*>(.*?)</tr>',
 		'person_md_regex'	=> '<a href="([^"]+)" ><img [^>]+>([^<]+)</a>.*?</td>.*?<td [^>]+>[^<]+<span [^>]+>([^<]+)</span>.*?</td>.*?<td.*?</td>.*?<td[^>]+>[^<]+<span title="([^"]+)"',
 	},
 	'Federal Council'	=> {
 		'code'			=> 'FederalCouncil',
 		'base_url'	=> 'http://www.parlament.gv.at/WWER/BR/MITGL/index.shtml?xdocumentUri=%2FWWER%2FBR%2FMITGL%2Findex.shtml&anwenden=Anwenden&BL=ALLE_BL&STEP=&FR=ALLE&NRBR=BR&FBEZ=FW_007&jsMode=&LISTE=&requestId=FE796F036A&letter=&WP=ALLE&listeId=7&R_WF=WP',
 		'list_regex'	=> '<table class="tabelle filterLetters[^>]+>(.*)</table>',
-		'person_regex'	=> '<tr [^>]+>(.*?)</tr>',
+		'person_regex'	=> '<tr [^>]*>(.*?)</tr>',
 		'person_md_regex'	=> '<a href="([^"]+)" ><img [^>]+>([^<]+)</a>.*?</td>.*?<td [^>]+>[^<]+<span [^>]+>([^<]+)</span>.*?</td>.*?<td.*?</td>.*?<td[^>]+>([^<]+)',
 	},
 };
@@ -38,10 +39,13 @@ open my $datafh, ">", "data.tsv";
 print $datafh "id\tname\tgender\timage\tbirth_date\tbirth_place\tdeath_date\tdeath_place\tgroup\thouse\tterm\tarea\texternal_links\n";
 my $country = 'austria';
 foreach my $chamber (keys %$chamber_data) {
+	print "Processing chamber $chamber...\n" if $debug;
 	my $this_chamber_data = $chamber_data->{$chamber};
 	my $chamber_code = $this_chamber_data->{code};
-	foreach my $gender (keys %params_for_gender) {
+	foreach my $gender (qw/male female/) {
+		print "Processing ${gender}s ($chamber)\n" if $debug;
 		foreach my $session (@sessions) {
+			print "Processing Session $session ($gender, $chamber)\n";
 			my $url_to_fetch = $this_chamber_data->{base_url}."&GP=$session&$params_for_gender{$gender}";
 			my $page_html = scraper::get_html("$country-$chamber_code-$session-$gender",$url_to_fetch,$use_cache);
 			my $list = scraper::get_list($this_chamber_data->{list_regex},$page_html);
@@ -69,6 +73,7 @@ foreach my $chamber (keys %$chamber_data) {
 				$data->{area} =~ s|^\s+||;
 				$data->{area} =~ s|\s+$||;
 				$data->{name} =~ s|\r\n$||;
+				print "Adding $data->{name} to db...\n" if $debug;
 				print $datafh "$data->{id}\t$data->{name}\t$data->{gender}\t$data->{image}\t$data->{birth_date}\t$data->{birth_place}\t";
 				if (defined $data->{death_date}) {
 					print $datafh "$data->{death_date}\t$data->{death_place}\t";
